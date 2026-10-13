@@ -1,0 +1,16 @@
+# cplt sandbox config for this repo. Generated with `cplt init`, then trimmed by hand.
+# Detected: Environment secrets, Node.js, Vite, JVM (Gradle), Ktor, Flyway
+#
+# Permissions under [propose] are only granted after you approve them with `cplt trust accept`.
+
+[deny]
+# Hidden from the agent even if it is set in your shell. See .env.example.
+env = ["MATRIKKEL_API_TOKEN"]
+
+[propose]
+# Gradle daemon and Kotlin compiler attach to local JVMs.
+allow_jvm_attach = true
+
+[propose.allow]
+# 8090: Ktor backend (./gradlew run), 5180: Vite dev server (bun run dev)
+localhost = [5180, 8090]

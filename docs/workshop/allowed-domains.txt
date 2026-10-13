@@ -1,0 +1,4 @@
+# Extra domains on top of cplt's built-in default allowlist (Copilot infrastructure + package registries).
+# Copy this file to ~/.config/cplt/allowed-domains.txt. cplt refuses an allowlist file the agent can write to.
+# Found with: cplt --with-proxy --observe-domains exec -- backend/gradlew -p backend test --refresh-dependencies
+plugins-artifacts.gradle.org
