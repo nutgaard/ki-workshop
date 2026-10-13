@@ -82,4 +82,58 @@ class MatrikkelApiTest {
         assertEquals("0301-208/1/3", formatMatrikkelnummer("0301", 208, 1, 3, 0))
         assertEquals("0301-220/12/0/1", formatMatrikkelnummer("0301", 220, 12, 0, 1))
     }
+
+    @Test
+    fun `searches by pasted matrikkelnummer`() = withApp { client ->
+        val treff = client.get("/api/matrikkelenheter?matrikkelnummer=0301-207/45").body<List<MatrikkelenhetSammendrag>>()
+        assertEquals(listOf("0301-207/45"), treff.map { it.matrikkelnummer })
+
+        val seksjon = client.get("/api/matrikkelenheter?matrikkelnummer=0301%20220/12/0/2").body<List<MatrikkelenhetSammendrag>>()
+        assertEquals(listOf("0301-220/12/0/2"), seksjon.map { it.matrikkelnummer })
+    }
+
+    @Test
+    fun `rejects malformed matrikkelnummer`() = withApp { client ->
+        assertEquals(HttpStatusCode.BadRequest, client.get("/api/matrikkelenheter?matrikkelnummer=207/45").status)
+    }
+
+    @Test
+    fun `parses matrikkelnummer variants`() {
+        assertEquals(MatrikkelnummerDeler("0301", 207, 45, 0, 0), parseMatrikkelnummer(" 0301-207/45 "))
+        assertEquals(MatrikkelnummerDeler("0301", 207, 45, 0, 0), parseMatrikkelnummer("0301 207 / 45"))
+        assertEquals(MatrikkelnummerDeler("0301", 208, 1, 3, 0), parseMatrikkelnummer("0301-208/1/3"))
+        assertEquals(MatrikkelnummerDeler("0301", 220, 12, 0, 1), parseMatrikkelnummer("0301-220/12/0/1"))
+    }
+
+    @Test
+    fun `exposes sum of andeler`() = withApp { client ->
+        assertEquals("1/1", client.get("/api/matrikkelenheter/1").body<Matrikkelenhet>().sumAndeler)
+        assertEquals("3/4", client.get("/api/matrikkelenheter/7").body<Matrikkelenhet>().sumAndeler)
+    }
+
+    @Test
+    fun `rejects eierforhold that makes the sum exceed 1`() = withApp { client ->
+        val response = client.post("/api/matrikkelenheter/1/eierforhold") {
+            contentType(ContentType.Application.Json)
+            setBody(NyttEierforhold(personId = 3, andelTeller = 1, andelNevner = 10))
+        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(2, client.get("/api/matrikkelenheter/1").body<Matrikkelenhet>().eierforhold.size)
+    }
+
+    @Test
+    fun `rejects zero nevner`() = withApp { client ->
+        val response = client.post("/api/matrikkelenheter/7/eierforhold") {
+            contentType(ContentType.Application.Json)
+            setBody(NyttEierforhold(personId = 2, andelTeller = 1, andelNevner = 0))
+        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `andel arithmetic reduces fractions`() {
+        assertEquals("1/1", (Andel.av(1, 3) + Andel.av(2, 3)).toString())
+        assertEquals("3/4", (Andel.av(1, 2) + Andel.av(1, 4)).toString())
+        assertTrue(Andel.av(2, 4) <= Andel.HEL)
+    }
 }

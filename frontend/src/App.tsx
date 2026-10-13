@@ -36,6 +36,7 @@ export function App() {
 
 function MatrikkelSok({ onVelg }: { onVelg: (id: number) => void }) {
   const [kommuner, setKommuner] = useState<Kommune[]>([]);
+  const [matrikkelnummer, setMatrikkelnummer] = useState("");
   const [kommunenummer, setKommunenummer] = useState("");
   const [gardsnummer, setGardsnummer] = useState("");
   const [bruksnummer, setBruksnummer] = useState("");
@@ -49,13 +50,26 @@ function MatrikkelSok({ onVelg }: { onVelg: (id: number) => void }) {
   function sok(event: React.FormEvent) {
     event.preventDefault();
     setFeil(null);
-    sokMatrikkelenheter({ kommunenummer, gardsnummer, bruksnummer })
+    const kriterier = matrikkelnummer.trim() ? { matrikkelnummer } : { kommunenummer, gardsnummer, bruksnummer };
+    sokMatrikkelenheter(kriterier)
       .then(setTreff)
       .catch((e: Error) => setFeil(e.message));
   }
 
   return (
     <>
+      <form onSubmit={sok}>
+        <label className="bred">
+          Matrikkelnummer
+          <input
+            value={matrikkelnummer}
+            placeholder="f.eks. 0301-207/45"
+            onChange={(e) => setMatrikkelnummer(e.target.value)}
+          />
+        </label>
+        <button type="submit">Søk</button>
+      </form>
+      <p className="eller">eller</p>
       <form onSubmit={sok}>
         <label>
           Kommune
@@ -160,6 +174,9 @@ function MatrikkelenhetDetalj({ id }: { id: number }) {
       </dl>
 
       <h3>Eierforhold</h3>
+      {enhet.sumAndeler !== "1/1" && (
+        <p className="advarsel">Andelene summerer til {enhet.sumAndeler}, ikke 1/1.</p>
+      )}
       <table>
         <thead>
           <tr>

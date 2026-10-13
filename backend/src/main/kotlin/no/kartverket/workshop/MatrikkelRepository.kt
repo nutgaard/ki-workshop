@@ -13,7 +13,13 @@ class MatrikkelRepository(private val database: Database) {
         )
     }
 
-    fun sokMatrikkelenheter(kommunenummer: String?, gardsnummer: Int?, bruksnummer: Int?): List<MatrikkelenhetSammendrag> =
+    fun sokMatrikkelenheter(
+        kommunenummer: String?,
+        gardsnummer: Int?,
+        bruksnummer: Int?,
+        festenummer: Int? = null,
+        seksjonsnummer: Int? = null,
+    ): List<MatrikkelenhetSammendrag> =
         database.session { session ->
             session.run(
                 queryOf(
@@ -23,9 +29,17 @@ class MatrikkelRepository(private val database: Database) {
                     WHERE (:kommunenummer IS NULL OR kommunenummer = :kommunenummer)
                       AND (:gardsnummer IS NULL OR gardsnummer = :gardsnummer)
                       AND (:bruksnummer IS NULL OR bruksnummer = :bruksnummer)
+                      AND (:festenummer IS NULL OR festenummer = :festenummer)
+                      AND (:seksjonsnummer IS NULL OR seksjonsnummer = :seksjonsnummer)
                     ORDER BY kommunenummer, gardsnummer, bruksnummer, festenummer, seksjonsnummer
                     """.trimIndent(),
-                    mapOf("kommunenummer" to kommunenummer, "gardsnummer" to gardsnummer, "bruksnummer" to bruksnummer),
+                    mapOf(
+                        "kommunenummer" to kommunenummer,
+                        "gardsnummer" to gardsnummer,
+                        "bruksnummer" to bruksnummer,
+                        "festenummer" to festenummer,
+                        "seksjonsnummer" to seksjonsnummer,
+                    ),
                 ).map { it.toSammendrag() }.asList,
             )
         }
@@ -52,31 +66,34 @@ class MatrikkelRepository(private val database: Database) {
                     areal = sammendrag.areal,
                     etablertDato = row.string("etablert_dato"),
                     eierforhold = emptyList(),
+                    sumAndeler = Andel.NULL.toString(),
                     adresser = emptyList(),
                     bygninger = emptyList(),
                 )
             }.asSingle,
         ) ?: throw NotFoundException("Matrikkelenhet $id finnes ikke")
 
+        val eierforhold = session.run(
+            queryOf(
+                """
+                SELECT e.id, e.andel_teller, e.andel_nevner, p.id AS person_id, p.navn, p.type
+                FROM eierforhold e JOIN person p ON p.id = e.person_id
+                WHERE e.matrikkelenhet_id = :id
+                ORDER BY e.id
+                """.trimIndent(),
+                mapOf("id" to id),
+            ).map {
+                Eierforhold(
+                    id = it.long("id"),
+                    person = Person(it.long("person_id"), it.string("navn"), it.string("type")),
+                    andelTeller = it.int("andel_teller"),
+                    andelNevner = it.int("andel_nevner"),
+                )
+            }.asList,
+        )
         enhet.copy(
-            eierforhold = session.run(
-                queryOf(
-                    """
-                    SELECT e.id, e.andel_teller, e.andel_nevner, p.id AS person_id, p.navn, p.type
-                    FROM eierforhold e JOIN person p ON p.id = e.person_id
-                    WHERE e.matrikkelenhet_id = :id
-                    ORDER BY e.id
-                    """.trimIndent(),
-                    mapOf("id" to id),
-                ).map {
-                    Eierforhold(
-                        id = it.long("id"),
-                        person = Person(it.long("person_id"), it.string("navn"), it.string("type")),
-                        andelTeller = it.int("andel_teller"),
-                        andelNevner = it.int("andel_nevner"),
-                    )
-                }.asList,
-            ),
+            eierforhold = eierforhold,
+            sumAndeler = eierforhold.sumAndeler().toString(),
             adresser = session.run(
                 queryOf(
                     "SELECT * FROM adresse WHERE matrikkelenhet_id = :id ORDER BY adressenavn, nummer, bokstav",
@@ -104,8 +121,17 @@ class MatrikkelRepository(private val database: Database) {
         )
     }
 
+    /**
+     * Adds an eierforhold. Rejects it if the total for the matrikkelenhet would exceed 1/1.
+     * A total below 1/1 is allowed, because owners are often registered one at a time.
+     */
     fun leggTilEierforhold(matrikkelenhetId: Long, nytt: NyttEierforhold): Matrikkelenhet {
-        matrikkelenhet(matrikkelenhetId) // throws NotFoundException if missing
+        val enhet = matrikkelenhet(matrikkelenhetId) // throws NotFoundException if missing
+        require(nytt.andelTeller > 0) { "Andel må være større enn 0" }
+        val nySum = enhet.eierforhold.sumAndeler() + Andel.av(nytt.andelTeller.toLong(), nytt.andelNevner.toLong())
+        require(nySum <= Andel.HEL) {
+            "Summen av andeler for ${enhet.matrikkelnummer} blir $nySum, som er mer enn 1/1"
+        }
         database.session { session ->
             session.run(
                 queryOf(

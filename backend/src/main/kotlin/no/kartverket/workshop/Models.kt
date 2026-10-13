@@ -29,6 +29,8 @@ data class Matrikkelenhet(
     val areal: Double?,
     val etablertDato: String,
     val eierforhold: List<Eierforhold>,
+    /** Sum of all eierforhold as a reduced fraction, e.g. "1/1". Anything other than "1/1" is a data quality problem. */
+    val sumAndeler: String,
     val adresser: List<Adresse>,
     val bygninger: List<Bygning>,
 )
@@ -65,4 +67,19 @@ fun formatMatrikkelnummer(kommunenummer: String, gnr: Int, bnr: Int, fnr: Int, s
     if (fnr != 0 || snr != 0) parts += fnr
     if (snr != 0) parts += snr
     return "$kommunenummer-${parts.joinToString("/")}"
+}
+
+data class MatrikkelnummerDeler(val kommunenummer: String, val gardsnummer: Int, val bruksnummer: Int, val festenummer: Int, val seksjonsnummer: Int)
+
+private val matrikkelnummerRegex = Regex("""^(\d{4})\s*[-\s]\s*(\d+)\s*/\s*(\d+)(?:\s*/\s*(\d+))?(?:\s*/\s*(\d+))?$""")
+
+/**
+ * Parses a matrikkelnummer as written in letters and emails, e.g. `0301-207/45`, `0301 207/45` or `0301-220/12/0/1`.
+ * Omitted festenummer/seksjonsnummer mean 0. Throws [IllegalArgumentException] on anything else.
+ */
+fun parseMatrikkelnummer(input: String): MatrikkelnummerDeler {
+    val match = matrikkelnummerRegex.matchEntire(input.trim())
+        ?: throw IllegalArgumentException("Ugyldig matrikkelnummer: '$input'. Forventet format er kommunenr-gnr/bnr[/fnr[/snr]]")
+    val (kommune, gnr, bnr, fnr, snr) = match.destructured
+    return MatrikkelnummerDeler(kommune, gnr.toInt(), bnr.toInt(), fnr.ifEmpty { "0" }.toInt(), snr.ifEmpty { "0" }.toInt())
 }

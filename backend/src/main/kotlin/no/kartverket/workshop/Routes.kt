@@ -18,6 +18,19 @@ fun Application.matrikkelRoutes(repository: MatrikkelRepository) {
 
             get("/matrikkelenheter") {
                 val params = call.request.queryParameters
+                val matrikkelnummer = params["matrikkelnummer"]?.takeIf { it.isNotBlank() }
+                if (matrikkelnummer != null) {
+                    val deler = parseMatrikkelnummer(matrikkelnummer)
+                    return@get call.respond(
+                        repository.sokMatrikkelenheter(
+                            kommunenummer = deler.kommunenummer,
+                            gardsnummer = deler.gardsnummer,
+                            bruksnummer = deler.bruksnummer,
+                            festenummer = deler.festenummer,
+                            seksjonsnummer = deler.seksjonsnummer,
+                        ),
+                    )
+                }
                 call.respond(
                     repository.sokMatrikkelenheter(
                         kommunenummer = params["kommunenummer"]?.takeIf { it.isNotBlank() },

@@ -141,3 +141,15 @@ td {
 .feil {
   color: #b00020;
 }
+
+.eller {
+  color: #888;
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.advarsel {
+  background: #fff4e5;
+  border-left: 4px solid #e07b00;
+  padding: 0.5rem 0.75rem;
+}

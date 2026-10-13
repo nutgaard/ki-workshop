@@ -3,7 +3,8 @@ import type { Adresse, Kommune, Matrikkelenhet, MatrikkelenhetSammendrag } from 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    const body = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(body?.message ?? `${response.status} ${response.statusText}`);
   }
   return response.json() as Promise<T>;
 }
@@ -13,6 +14,7 @@ export function hentKommuner(): Promise<Kommune[]> {
 }
 
 export interface MatrikkelSok {
+  matrikkelnummer?: string;
   kommunenummer?: string;
   gardsnummer?: string;
   bruksnummer?: string;

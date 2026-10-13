@@ -55,6 +55,8 @@ export interface Matrikkelenhet {
   areal: number | null;
   etablertDato: string;
   eierforhold: Eierforhold[];
+  /** Reduced fraction, e.g. "1/1". Anything else is a data quality problem. */
+  sumAndeler: string;
   adresser: Adresse[];
   bygninger: Bygning[];
 }
