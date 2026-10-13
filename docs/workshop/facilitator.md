@@ -37,6 +37,7 @@ Run these from the repo root. Every step was checked with cplt 2026.09.28 on mac
    - The allowlist file must live outside the repo. cplt refuses one the agent could write to, because it re-reads the file every few seconds.
    - `--preset strict` goes further, with forced egress, but it also blocks localhost, so the Gradle daemon can't start. Standard plus the allowlist is the practical middle ground for this stack.
 5. **Trust is in git.** Run `cplt trust show`. `.cplt.toml` only grants what's committed and approved, and the agent can't write to it mid-session. `[deny]` rules apply even before approval.
+6. **Skills are code too.** A skill is instructions the agent follows with your permissions, so treat it like a dependency. Show `apm.yml` and `apm.lock.yaml` (pinned commit + content hashes), then run `apm audit --ci`: it scans for hidden Unicode (the classic prompt-injection trick) and for drift. Edit a line in `.agents/skills/grill-me/SKILL.md`, run `apm audit --ci` again to show it fail with the modified file listed, then `git checkout .agents`. (Run `apm install --frozen` first so the drift check has its cache.)
 
 Talking points:
 - Approval prompts become rubber stamps after the 20th "yes". A kernel sandbox gives a boundary you don't have to watch.

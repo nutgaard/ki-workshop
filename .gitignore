@@ -16,3 +16,6 @@ frontend/dist/
 .idea/
 *.iml
 .DS_Store
+
+# APM download cache (apm.yml + apm.lock.yaml + deployed files are committed)
+apm_modules/

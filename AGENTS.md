@@ -39,7 +39,7 @@ cd frontend && bun run dev        # UI on http://localhost:5180 (proxies /api to
 
 ## Agent skills
 
-The skills in `.claude/skills/` are vendored from mattpocock/skills (see `.claude/skills/README.md`). Both Copilot and Claude Code read them from there.
+Skills come from [mattpocock/skills](https://github.com/mattpocock/skills) and are managed with [APM](https://github.com/microsoft/apm). `apm.yml` declares them, `apm.lock.yaml` pins the exact commit and content hashes, and `apm install` deploys them to `.agents/skills/` (Copilot) and `.claude/skills/` (Claude Code). Don't edit the deployed skill files by hand, because `apm audit` reports that as drift. Change `apm.yml` and run `apm install` instead.
 
 ### Issue tracker
 

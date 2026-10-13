@@ -6,15 +6,17 @@ The workshop uses **GitHub Copilot CLI inside [cplt](https://github.com/navikt/c
 
 ## Before the workshop (≈10 min, please do this in advance)
 
-1. **Tools:** JDK 21, [Bun](https://bun.sh), git, [Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli) (run `copilot` once and log in), and cplt:
+1. **Tools:** JDK 21, [Bun](https://bun.sh), git, [Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli) (run `copilot` once and log in), cplt and [APM](https://github.com/microsoft/apm):
    ```bash
-   brew install navikt/tap/cplt     # or: brew upgrade cplt
+   brew install navikt/tap/cplt apm     # or: brew upgrade cplt apm
    ```
 2. **Clone and approve the sandbox config:**
    ```bash
    git clone <repo-url> mini-matrikkel && cd mini-matrikkel
    cat .cplt.toml                   # read what the repo asks for
    cplt trust accept --all          # approve it (JVM attach + localhost ports 5180/8090)
+   apm install --frozen             # restore agent skills exactly as locked (run outside cplt)
+   apm audit --ci                   # scans for hidden Unicode, fails on drift
    ```
 3. **Check that everything builds inside the sandbox:**
    ```bash
@@ -33,7 +35,16 @@ The workshop uses **GitHub Copilot CLI inside [cplt](https://github.com/navikt/c
 
 ## Skills
 
-Matt Pocock's skills are **vendored** in [`.claude/skills/`](.claude/skills/README.md), so there's nothing to install. Copilot (CLI, cloud agent, VS Code and JetBrains agent mode) and Claude Code all read skills from that folder. Repo instructions are in `AGENTS.md`, which Copilot reads directly. `CLAUDE.md` just imports it.
+[Matt Pocock's skills](https://github.com/mattpocock/skills) are managed with **APM**, the Agent Package Manager, which works like `package.json` + a lockfile, but for agent context:
+
+- `apm.yml` declares the dependency (`mattpocock/skills#v1.3.1`) and the targets (Copilot and Claude).
+- `apm.lock.yaml` pins the resolved commit and a content hash for every file.
+- `apm install` deploys the skills to `.agents/skills/` (Copilot) and `.claude/skills/` (Claude Code). These files are committed, so they're reviewable in PRs. Only the `apm_modules/` cache is gitignored.
+- `apm audit --ci` checks for hidden Unicode and fails on drift between the lockfile and the files on disk (`apm install` already blocks critical hidden-Unicode findings). Plain `apm audit` only reports; it exits 0 even with drift, and silently skips the drift check if the local APM cache is empty. `apm outdated` / `apm update` handle new versions, and the update shows up as a normal diff.
+
+Run APM **outside** cplt: it's a setup step for you, not something the agent should do (and cplt blocks it from writing `~/.apm`).
+
+Repo instructions are in `AGENTS.md`, which Copilot reads directly. `CLAUDE.md` just imports it.
 
 **IntelliJ:** skills work in Copilot agent mode there too. That support is a preview feature: enable it under *Settings → GitHub Copilot → Chat → Agent*, and on a Business/Enterprise plan an admin must allow "Editor preview features". But **cplt does not sandbox the IntelliJ plugin**. Do the exercise in Copilot CLI under cplt, and use IntelliJ to read and review the diffs.
 
@@ -66,4 +77,4 @@ Stuck? The `solution` branch has reference implementations of tickets 1 and 2.
 cplt --agent claude --with-proxy --default-allowlist --allowed-domains ~/.config/cplt/allowed-domains.txt
 ```
 
-The same skills, instructions and tickets apply. Claude's built-in `/code-review` and the vendored `code-review` skill have the same name. Use `/code-review` and check which one runs.
+The same skills, instructions and tickets apply. Claude's built-in `/code-review` and Matt's `code-review` skill have the same name. Use `/code-review` and check which one runs.
