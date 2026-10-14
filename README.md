@@ -12,7 +12,7 @@ The workshop uses **GitHub Copilot CLI inside [cplt](https://github.com/navikt/c
    ```
 2. **Clone and approve the sandbox config:**
    ```bash
-   git clone <repo-url> mini-matrikkel && cd mini-matrikkel
+   git clone git@github.com:nutgaard/ki-workshop.git && cd ki-workshop
    cat .cplt.toml                   # read what the repo asks for
    cplt trust accept --all          # approve it (JVM attach + localhost ports 5180/8090)
    apm install --frozen             # restore agent skills exactly as locked (run outside cplt)
